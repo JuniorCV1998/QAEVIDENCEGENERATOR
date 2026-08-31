@@ -49,7 +49,12 @@ form.addEventListener('submit', async (event) => {
         const data = await response.json();
         if (data.error) message = data.error;
       } catch (_) {
-        // respuesta no era JSON, se mantiene el mensaje genérico
+        // La respuesta no era JSON: típico de un timeout del servidor (ej. el
+        // plan gratis de Render "despertando" tras estar inactivo).
+        if (response.status >= 502 && response.status <= 504) {
+          message =
+            'El servidor estaba iniciando (puede pasar en el plan gratis tras un rato sin uso). Espera unos segundos e intenta de nuevo.';
+        }
       }
       setStatus(message, 'error');
       return;
