@@ -39,7 +39,29 @@ jobs:
           name: mac-arm64
           path: dist/QaEvidenceGenerator-mac-arm64
 
+  commit-binaries:
+    needs: [build-win, build-mac-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: chmod +x dist/QaEvidenceGenerator-mac-arm64
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist/QaEvidenceGenerator.exe dist/QaEvidenceGenerator-mac-arm64
+          git diff --cached --quiet || git commit -m "chore: actualiza binarios compilados [skip ci]"
+          git push
+
+  # Los runners macOS Intel (x64) de GitHub tienen muy poca disponibilidad en el
+  # plan gratuito y pueden quedar horas en cola. Por eso este job es manual
+  # (solo corre si se dispara el workflow a mano) y no bloquea el pipeline
+  # principal de Windows + Mac Apple Silicon.
   build-mac-x64:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
@@ -53,19 +75,21 @@ jobs:
           name: mac-x64
           path: dist/QaEvidenceGenerator-mac-x64
 
-  commit-binaries:
-    needs: [build-win, build-mac-arm64, build-mac-x64]
+  commit-mac-x64:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-mac-x64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          name: mac-x64
           path: dist
-          merge-multiple: true
-      - run: chmod +x dist/QaEvidenceGenerator-mac-arm64 dist/QaEvidenceGenerator-mac-x64
+      - run: chmod +x dist/QaEvidenceGenerator-mac-x64
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dist/QaEvidenceGenerator.exe dist/QaEvidenceGenerator-mac-arm64 dist/QaEvidenceGenerator-mac-x64
-          git diff --cached --quiet || git commit -m "chore: actualiza binarios compilados [skip ci]"
+          git add dist/QaEvidenceGenerator-mac-x64
+          git diff --cached --quiet || git commit -m "chore: actualiza binario Mac Intel [skip ci]"
+          git pull --rebase
           git push
