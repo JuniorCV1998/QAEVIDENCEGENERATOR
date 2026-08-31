@@ -13,7 +13,6 @@ const {
   VerticalAlign,
   PageOrientation,
   TableLayoutType,
-  Footer,
 } = require('docx');
 
 const FONT = 'Calibri';
@@ -393,25 +392,6 @@ function buildFeatureSections(featureResult, formData, warnings) {
   return { children, plataforma };
 }
 
-function buildFooter() {
-  return new Footer({
-    children: [
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun({
-            text: 'Generado por el equipo de QA Wealth Management',
-            italics: true,
-            color: '999999',
-            font: FONT,
-            size: 16,
-          }),
-        ],
-      }),
-    ],
-  });
-}
-
 function wrapAsDocument(children) {
   return new Document({
     sections: [
@@ -430,9 +410,6 @@ function wrapAsDocument(children) {
               right: PAGE_MARGIN_TWIPS,
             },
           },
-        },
-        footers: {
-          default: buildFooter(),
         },
         children,
       },
