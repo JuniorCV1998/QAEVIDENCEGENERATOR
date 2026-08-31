@@ -1,6 +1,8 @@
 node_modules/
 dist/*
 !dist/QaEvidenceGenerator.exe
+!dist/QaEvidenceGenerator-mac-arm64
+!dist/QaEvidenceGenerator-mac-x64
 uploads/*
 !uploads/.gitkeep
 output/*

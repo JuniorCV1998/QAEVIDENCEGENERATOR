@@ -11,6 +11,9 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "build:exe": "pkg . --targets node22-win-x64 --output dist/QaEvidenceGenerator.exe",
+    "build:mac-arm64": "pkg . --targets node22-macos-arm64 --output dist/QaEvidenceGenerator-mac-arm64",
+    "build:mac-x64": "pkg . --targets node22-macos-x64 --output dist/QaEvidenceGenerator-mac-x64",
+    "build:all": "npm run build:exe && npm run build:mac-arm64 && npm run build:mac-x64",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
