@@ -1,7 +1,24 @@
 const fs = require('fs');
 const path = require('path');
-const { Parser, AstBuilder, GherkinClassicTokenMatcher } = require('@cucumber/gherkin');
-const { IdGenerator } = require('@cucumber/messages');
+
+// @cucumber/gherkin y @cucumber/messages son paquetes ESM-only (package.json "type": "module").
+// require() de ESM solo es estable desde Node 22.12+; para que esto funcione también en
+// versiones de Node más antiguas (Node 18/20/22.x tempranos), se cargan con import() dinámico
+// y se cachea el resultado.
+let gherkinLibPromise = null;
+function loadGherkinLib() {
+  if (!gherkinLibPromise) {
+    gherkinLibPromise = Promise.all([import('@cucumber/gherkin'), import('@cucumber/messages')]).then(
+      ([gherkin, messages]) => ({
+        Parser: gherkin.Parser,
+        AstBuilder: gherkin.AstBuilder,
+        GherkinClassicTokenMatcher: gherkin.GherkinClassicTokenMatcher,
+        IdGenerator: messages.IdGenerator,
+      })
+    );
+  }
+  return gherkinLibPromise;
+}
 
 // @DFPEWEMA-2017-001 -> DFPEWEMA-2017-001
 const JIRA_ID_TAG_RE = /^@([A-Za-z]+-\d+-\d+)$/;
@@ -18,18 +35,17 @@ class GherkinParseError extends Error {
   }
 }
 
-function createParser() {
-  return new Parser(new AstBuilder(IdGenerator.uuid()), new GherkinClassicTokenMatcher());
-}
-
 /**
  * Parsea el contenido de un archivo .feature y devuelve una estructura
  * lista para alimentar el generador de Word.
  */
-function parseFeatureContent(content, fileName) {
+async function parseFeatureContent(content, fileName) {
+  const { Parser, AstBuilder, GherkinClassicTokenMatcher, IdGenerator } = await loadGherkinLib();
+  const parser = new Parser(new AstBuilder(IdGenerator.uuid()), new GherkinClassicTokenMatcher());
+
   let gherkinDocument;
   try {
-    gherkinDocument = createParser().parse(content);
+    gherkinDocument = parser.parse(content);
   } catch (err) {
     throw new GherkinParseError(
       `"${fileName}" tiene errores de sintaxis Gherkin:\n${err.message}`,
@@ -148,7 +164,7 @@ function parseExamplesBlock(examplesNode) {
 /**
  * Lee y parsea un archivo .feature desde disco.
  */
-function parseFeatureFile(filePath) {
+async function parseFeatureFile(filePath) {
   const fileName = path.basename(filePath);
   if (path.extname(fileName).toLowerCase() !== '.feature') {
     throw new GherkinParseError(`"${fileName}" no es un archivo .feature válido.`, 'INVALID_EXTENSION');

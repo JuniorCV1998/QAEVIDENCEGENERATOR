@@ -51,8 +51,8 @@ router.post('/generate', (req, res) => {
         tipo: (req.body.tipo || '').trim(),
       };
 
-      const features = req.files.map((file) =>
-        parseFeatureContent(file.buffer.toString('utf8'), file.originalname)
+      const features = await Promise.all(
+        req.files.map((file) => parseFeatureContent(file.buffer.toString('utf8'), file.originalname))
       );
 
       const { documents, warnings } = await generateEvidenceDocuments({ features, formData });
