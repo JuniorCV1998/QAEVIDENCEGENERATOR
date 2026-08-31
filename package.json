@@ -5,6 +5,9 @@
   "license": "ISC",
   "author": "Jose Cerron Vicente",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "src/server.js",
   "bin": "src/server.js",
   "scripts": {
