@@ -13,6 +13,7 @@ const {
   VerticalAlign,
   PageOrientation,
   TableLayoutType,
+  Footer,
 } = require('docx');
 
 const FONT = 'Calibri';
@@ -22,6 +23,7 @@ const BLACK = '000000';
 const LABEL_SIZE = 22; // 11pt
 const VALUE_SIZE = 22; // 11pt
 const SMALL_SIZE = 20; // 10pt
+const EVIDENCE_TABLE_SIZE = 16; // 8pt (tablas de datos de los Examples)
 
 const PAGE_WIDTH_TWIPS = 11906;
 const PAGE_MARGIN_TWIPS = 1701;
@@ -34,7 +36,7 @@ const CELL_BORDER = {
   right: { style: BorderStyle.SINGLE, size: 4, color: '999999' },
 };
 
-function headerLabelCell(text, columnSpan = 1) {
+function headerLabelCell(text, columnSpan = 1, options = {}) {
   return new TableCell({
     columnSpan,
     verticalAlign: VerticalAlign.CENTER,
@@ -44,7 +46,15 @@ function headerLabelCell(text, columnSpan = 1) {
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text, bold: true, color: WHITE, font: FONT, size: LABEL_SIZE })],
+        children: [
+          new TextRun({
+            text,
+            bold: true,
+            color: WHITE,
+            font: FONT,
+            size: options.size || LABEL_SIZE,
+          }),
+        ],
       }),
     ],
   });
@@ -189,11 +199,11 @@ function buildEvidenceRowTable(headers, values) {
     columnWidths: Array(headers.length).fill(colWidth),
     rows: [
       new TableRow({
-        children: headers.map((h) => headerLabelCell(h)),
+        children: headers.map((h) => headerLabelCell(h, 1, { size: EVIDENCE_TABLE_SIZE })),
       }),
       new TableRow({
         children: values.map((v) =>
-          valueCell(v, 1, { alignment: AlignmentType.CENTER, size: SMALL_SIZE })
+          valueCell(v, 1, { alignment: AlignmentType.CENTER, size: EVIDENCE_TABLE_SIZE })
         ),
       }),
     ],
@@ -277,7 +287,16 @@ function buildFeatureSections(featureResult, formData, warnings) {
   const platformSet = new Set();
   scenarios.forEach((sc) =>
     sc.examples.forEach((ex) => {
-      if (ex.platformTag) platformSet.add(ex.platformTag);
+      if (!ex.platformTag) return;
+      // platformTag puede venir como string compuesto ("android, ios") si el
+      // bloque Examples tiene varios tags de plataforma a la vez; se separa en
+      // tokens individuales para garantizar deduplicación real sin importar el
+      // orden o cómo se combinaron los tags entre distintos Examples/escenarios.
+      ex.platformTag
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .forEach((t) => platformSet.add(t));
     })
   );
   const plataforma = [...platformSet].join(', ');
@@ -374,6 +393,25 @@ function buildFeatureSections(featureResult, formData, warnings) {
   return { children, plataforma };
 }
 
+function buildFooter() {
+  return new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            text: 'Generado por el equipo de QA Wealth Management',
+            italics: true,
+            color: '999999',
+            font: FONT,
+            size: 16,
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
 function wrapAsDocument(children) {
   return new Document({
     sections: [
@@ -392,6 +430,9 @@ function wrapAsDocument(children) {
               right: PAGE_MARGIN_TWIPS,
             },
           },
+        },
+        footers: {
+          default: buildFooter(),
         },
         children,
       },
