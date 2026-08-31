@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Evidence Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>QA Evidence Generator</h1>
+      <p class="subtitle">Genera el documento Word de evidencias QA a partir de archivos .feature</p>
+    </header>
+
+    <form id="evidence-form">
+      <fieldset>
+        <legend>Archivos .feature</legend>
+        <label for="features">Selecciona uno o más archivos <code>.feature</code></label>
+        <input type="file" id="features" name="features" accept=".feature" multiple required />
+        <ul id="file-list" class="file-list"></ul>
+      </fieldset>
+
+      <fieldset>
+        <legend>Datos del reporte</legend>
+
+        <div class="field">
+          <label for="jiraId">JIRA ID</label>
+          <input type="text" id="jiraId" name="jiraId" placeholder="DFPEWEMA-2026" required />
+        </div>
+
+        <div class="field">
+          <label for="jiraDescription">Descripción de la historia de usuario</label>
+          <textarea id="jiraDescription" name="jiraDescription" rows="3" placeholder="Como Usuario de Fondos ..." required></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="entidad">Entidad</label>
+            <select id="entidad" name="entidad" required>
+              <option value="" disabled selected>Selecciona...</option>
+              <option value="SBP">SBP</option>
+              <option value="CSF">CSF</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fecha">Fecha de ejecución</label>
+            <input type="date" id="fecha" name="fecha" required />
+          </div>
+
+          <div class="field">
+            <label for="ambiente">Ambiente de pruebas</label>
+            <input type="text" id="ambiente" name="ambiente" placeholder="UAT / UAT-1 / ..." required />
+          </div>
+
+          <div class="field">
+            <label for="tipo">Tipo</label>
+            <input type="text" id="tipo" name="tipo" placeholder="Release / Hotfix / ..." required />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="analistasQA">Analista(s) QA</label>
+            <input type="text" id="analistasQA" name="analistasQA" placeholder="Separados por coma" required />
+          </div>
+
+          <div class="field">
+            <label for="analistasDev">Analista(s) Desarrollador</label>
+            <input type="text" id="analistasDev" name="analistasDev" placeholder="Separados por coma" />
+          </div>
+
+          <div class="field">
+            <label for="usuario">Usuario(s) - PO</label>
+            <input type="text" id="usuario" name="usuario" placeholder="Separados por coma" />
+          </div>
+        </div>
+      </fieldset>
+
+      <button type="submit" id="submit-btn">Generar evidencia Word</button>
+    </form>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

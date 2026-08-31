@@ -1,0 +1,38 @@
+{
+  "name": "qa-evidence-generator",
+  "version": "1.0.0",
+  "description": "Generador de documentos Word de evidencias QA a partir de archivos .feature (Gherkin/BDD)",
+  "license": "ISC",
+  "author": "Jose Cerron Vicente",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "bin": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "build:exe": "pkg . --targets node22-win-x64 --output dist/QaEvidenceGenerator.exe",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@cucumber/gherkin": "^42.0.1",
+    "@cucumber/messages": "^34.2.1",
+    "docx": "^9.1.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jszip": "^3.10.1",
+    "multer": "^2.0.1"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.22.0",
+    "nodemon": "^3.1.4"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ],
+    "targets": [
+      "node22-win-x64"
+    ],
+    "outputPath": "dist"
+  }
+}
