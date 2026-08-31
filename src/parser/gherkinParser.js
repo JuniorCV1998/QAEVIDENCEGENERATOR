@@ -2,20 +2,35 @@ const fs = require('fs');
 const path = require('path');
 
 // @cucumber/gherkin y @cucumber/messages son paquetes ESM-only (package.json "type": "module").
-// require() de ESM solo es estable desde Node 22.12+; para que esto funcione también en
-// versiones de Node más antiguas (Node 18/20/22.x tempranos), se cargan con import() dinámico
-// y se cachea el resultado.
+// - En Node 22.12+ (incluido el runtime que trae el .exe empaquetado con pkg), require()
+//   de un paquete ESM funciona de forma síncrona: se usa ese camino porque además es el
+//   único que funciona dentro del snapshot de pkg (pkg no soporta import() dinámico).
+// - En Node más antiguo (< 22.12, ej. Mac con Node 22.4), ese require() falla con
+//   ERR_REQUIRE_ESM; ahí se usa import() dinámico como respaldo (ese caso nunca ocurre
+//   dentro del .exe, porque su Node embebido siempre es moderno).
 let gherkinLibPromise = null;
 function loadGherkinLib() {
   if (!gherkinLibPromise) {
-    gherkinLibPromise = Promise.all([import('@cucumber/gherkin'), import('@cucumber/messages')]).then(
-      ([gherkin, messages]) => ({
+    gherkinLibPromise = (async () => {
+      let gherkin;
+      let messages;
+      try {
+        gherkin = require('@cucumber/gherkin');
+        messages = require('@cucumber/messages');
+      } catch (err) {
+        if (err.code !== 'ERR_REQUIRE_ESM') throw err;
+        [gherkin, messages] = await Promise.all([
+          import('@cucumber/gherkin'),
+          import('@cucumber/messages'),
+        ]);
+      }
+      return {
         Parser: gherkin.Parser,
         AstBuilder: gherkin.AstBuilder,
         GherkinClassicTokenMatcher: gherkin.GherkinClassicTokenMatcher,
         IdGenerator: messages.IdGenerator,
-      })
-    );
+      };
+    })();
   }
   return gherkinLibPromise;
 }
