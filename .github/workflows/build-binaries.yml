@@ -1,0 +1,71 @@
+name: Build executables
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'dist/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build:exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-exe
+          path: dist/QaEvidenceGenerator.exe
+
+  build-mac-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build:mac-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64
+          path: dist/QaEvidenceGenerator-mac-arm64
+
+  build-mac-x64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build:mac-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-x64
+          path: dist/QaEvidenceGenerator-mac-x64
+
+  commit-binaries:
+    needs: [build-win, build-mac-arm64, build-mac-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: chmod +x dist/QaEvidenceGenerator-mac-arm64 dist/QaEvidenceGenerator-mac-x64
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist/QaEvidenceGenerator.exe dist/QaEvidenceGenerator-mac-arm64 dist/QaEvidenceGenerator-mac-x64
+          git diff --cached --quiet || git commit -m "chore: actualiza binarios compilados [skip ci]"
+          git push
