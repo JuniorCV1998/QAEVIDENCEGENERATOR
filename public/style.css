@@ -99,6 +99,49 @@ input[type="file"] {
   gap: 16px;
 }
 
+.tipo-options {
+  display: flex;
+  gap: 12px;
+}
+
+.tipo-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.tipo-option:has(input:checked) {
+  border-color: var(--red);
+  background: #fdecea;
+}
+
+.tipo-option input[type="radio"] {
+  margin: 0;
+  accent-color: var(--red);
+}
+
+.tipo-option span {
+  display: flex;
+  flex-direction: column;
+}
+
+.tipo-option strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.tipo-option small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .field-row .field {
   flex: 1;
   min-width: 0;

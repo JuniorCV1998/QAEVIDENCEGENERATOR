@@ -39,6 +39,7 @@ function headerLabelCell(text, columnSpan = 1, options = {}) {
   return new TableCell({
     columnSpan,
     verticalAlign: VerticalAlign.CENTER,
+    width: options.width,
     shading: { type: ShadingType.CLEAR, color: 'auto', fill: RED },
     borders: CELL_BORDER,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
@@ -141,13 +142,18 @@ function buildHeaderTable(data) {
  * SECCIÓN 2 — Tabla de casos de prueba (una fila por cada fila de datos de cada Examples).
  */
 function buildCasosTable(casos) {
+  // Anchos explícitos en tblGrid y en cada celda: Google Docs/Drive ignoran el ancho
+  // de la tabla si no existe la rejilla de columnas y colapsa las columnas.
+  const colWidths = [0.13, 0.32, 0.4, 0.15].map((p) => Math.floor(CONTENT_WIDTH_TWIPS * p));
+  const width = (i) => ({ size: colWidths[i], type: WidthType.DXA });
+
   const rows = [
     new TableRow({
       children: [
-        headerLabelCell('N°'),
-        headerLabelCell('Casos de prueba'),
-        headerLabelCell('Resultado esperado'),
-        headerLabelCell('Resultado'),
+        headerLabelCell('N°', 1, { width: width(0) }),
+        headerLabelCell('Casos de prueba', 1, { width: width(1) }),
+        headerLabelCell('Resultado esperado', 1, { width: width(2) }),
+        headerLabelCell('Resultado', 1, { width: width(3) }),
       ],
     }),
   ];
@@ -156,19 +162,10 @@ function buildCasosTable(casos) {
     rows.push(
       new TableRow({
         children: [
-          valueCell(caso.numero, 1, {
-            alignment: AlignmentType.CENTER,
-            width: { size: Math.floor(CONTENT_WIDTH_TWIPS * 0.13), type: WidthType.DXA },
-          }),
-          valueCell(caso.nombreCaso, 1, {
-            width: { size: Math.floor(CONTENT_WIDTH_TWIPS * 0.32), type: WidthType.DXA },
-          }),
-          valueCell(caso.resultadoEsperado, 1, {
-            width: { size: Math.floor(CONTENT_WIDTH_TWIPS * 0.4), type: WidthType.DXA },
-          }),
-          valueCell('', 1, {
-            width: { size: Math.floor(CONTENT_WIDTH_TWIPS * 0.15), type: WidthType.DXA },
-          }),
+          valueCell(caso.numero, 1, { alignment: AlignmentType.CENTER, width: width(0) }),
+          valueCell(caso.nombreCaso, 1, { width: width(1) }),
+          valueCell(caso.resultadoEsperado, 1, { width: width(2) }),
+          valueCell('', 1, { width: width(3) }),
         ],
       })
     );
@@ -177,7 +174,8 @@ function buildCasosTable(casos) {
   return new Table({
     alignment: AlignmentType.CENTER,
     layout: TableLayoutType.FIXED,
-    width: { size: CONTENT_WIDTH_TWIPS, type: WidthType.DXA },
+    width: { size: colWidths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
+    columnWidths: colWidths,
     rows,
   });
 }
@@ -186,26 +184,42 @@ function buildCasosTable(casos) {
  * Mini tabla de evidencia: 2 filas (cabeceras del datatable + valores de una fila de datos).
  */
 function buildEvidenceRowTable(headers, values) {
-  if (headers.length === 0) {
+  // Regresión no tiene encabezados: la tabla solo lleva la fila de valores.
+  const hasHeaders = Array.isArray(headers) && headers.length > 0;
+  const columnCount = hasHeaders ? headers.length : values.length;
+  if (columnCount === 0) {
     return null;
   }
-  const colWidth = Math.floor(CONTENT_WIDTH_TWIPS / headers.length);
+  const colWidth = Math.floor(CONTENT_WIDTH_TWIPS / columnCount);
+
+  const rows = [];
+  if (hasHeaders) {
+    rows.push(
+      new TableRow({
+        children: headers.map((h) =>
+          headerLabelCell(h, 1, { size: EVIDENCE_TABLE_SIZE, width: { size: colWidth, type: WidthType.DXA } })
+        ),
+      })
+    );
+  }
+  rows.push(
+    new TableRow({
+      children: values.map((v) =>
+        valueCell(v, 1, {
+          alignment: AlignmentType.CENTER,
+          size: EVIDENCE_TABLE_SIZE,
+          width: { size: colWidth, type: WidthType.DXA },
+        })
+      ),
+    })
+  );
 
   return new Table({
     alignment: AlignmentType.CENTER,
     layout: TableLayoutType.FIXED,
-    width: { size: colWidth * headers.length, type: WidthType.DXA },
-    columnWidths: Array(headers.length).fill(colWidth),
-    rows: [
-      new TableRow({
-        children: headers.map((h) => headerLabelCell(h, 1, { size: EVIDENCE_TABLE_SIZE })),
-      }),
-      new TableRow({
-        children: values.map((v) =>
-          valueCell(v, 1, { alignment: AlignmentType.CENTER, size: EVIDENCE_TABLE_SIZE })
-        ),
-      }),
-    ],
+    width: { size: colWidth * columnCount, type: WidthType.DXA },
+    columnWidths: Array(columnCount).fill(colWidth),
+    rows,
   });
 }
 
@@ -272,6 +286,15 @@ function deriveExpectedResult(steps) {
   return combined;
 }
 
+/**
+ * Convierte la fecha del input type="date" (AAAA-MM-DD) a DD-MM-AAAA.
+ * Si el valor no tiene ese formato se devuelve tal cual.
+ */
+function formatFecha(fecha) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha || '');
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : fecha || '';
+}
+
 function padNumero(n) {
   return String(n).padStart(3, '0');
 }
@@ -304,7 +327,7 @@ function buildFeatureSections(featureResult, formData, warnings) {
     jiraId: baseJiraId,
     descripcion: formData.jiraDescription || '',
     entidad: formData.entidad || '',
-    fecha: formData.fecha || '',
+    fecha: formatFecha(formData.fecha),
     analistasQA: formData.analistasQA || '',
     analistasDev: formData.analistasDev || '',
     plataforma,
@@ -318,7 +341,8 @@ function buildFeatureSections(featureResult, formData, warnings) {
   const scenarioBlocks = [];
 
   scenarios.forEach((scenario, scenarioIdx) => {
-    const numero = `${baseJiraId}-${padNumero(scenarioIdx + 1)}`;
+    // En Regresión el ID viene del CSV (REGRE-0001, CONV-0002...).
+    const numero = scenario.regressionId || `${baseJiraId}-${padNumero(scenarioIdx + 1)}`;
 
     casos.push({
       numero,
@@ -327,12 +351,20 @@ function buildFeatureSections(featureResult, formData, warnings) {
     });
 
     // --- Sección 3: sigue detallando cada example / fila de datos como evidencia ---
-    const exampleBlocks = scenario.examples.map((example, exIdx) => ({
-      titulo: `Example ${exIdx + 1}${example.platformTag ? ` – @${example.platformTag}` : ''}`,
-      rowTables: example.rows.map((row) => ({
-        table: buildEvidenceRowTable(example.headers, row.values),
-      })),
-    }));
+    // Cada fila de datos es un caso de prueba: se numera de forma consecutiva por
+    // plataforma (Example 1 – @chrome, Example 2 – @chrome, Example 1 – @safari, ...).
+    const contadorPorPlataforma = {};
+    const exampleBlocks = [];
+    for (const example of scenario.examples) {
+      const plataformaEx = example.platformTag || '';
+      for (const row of example.rows) {
+        contadorPorPlataforma[plataformaEx] = (contadorPorPlataforma[plataformaEx] || 0) + 1;
+        exampleBlocks.push({
+          titulo: `Example ${contadorPorPlataforma[plataformaEx]}${plataformaEx ? ` – @${plataformaEx}` : ''}`,
+          rowTables: [{ table: buildEvidenceRowTable(example.headers, row.values) }],
+        });
+      }
+    }
 
     scenarioBlocks.push({
       tituloId: numero,
@@ -449,22 +481,42 @@ function sanitizeFileNamePart(text, maxLength = 60) {
  * @param {{features: Array, formData: Object}} params
  * @returns {Promise<{documents: Array<{fileName: string, buffer: Buffer}>, warnings: string[]}>}
  */
-async function generateEvidenceDocuments({ features, formData }) {
+async function generateEvidenceDocuments({ features, formData, modo = 'certificacion' }) {
   const warnings = [];
   const documents = [];
 
   for (const featureResult of features) {
-    const { children, plataforma } = buildFeatureSections(featureResult, formData, warnings);
-    const doc = wrapAsDocument(children);
-    // eslint-disable-next-line no-await-in-loop
-    const buffer = await Packer.toBuffer(doc);
+    const originalBaseName = featureResult.fileName.replace(/\.(feature|csv)$/i, '');
 
-    const originalBaseName = featureResult.fileName.replace(/\.feature$/i, '');
-    const namePart = sanitizeFileNamePart(originalBaseName, 80) || 'Feature';
-    const platformPart = sanitizeFileNamePart(plataforma, 30) || 'SinPlataforma';
-    const fileName = `${namePart}-${platformPart}.docx`;
+    // Certificación: un documento por archivo.
+    // Regresión: un documento por tipo de escenario (prefijo del ID: REGRE, CONV...),
+    // con todos sus escenarios en secuencia dentro del mismo documento.
+    let parts = [{ featureResult, nameBase: originalBaseName }];
+    if (modo === 'regresion') {
+      const grupos = new Map();
+      featureResult.scenarios.forEach((sc) => {
+        const tipo = sc.regressionId.split('-')[0].toUpperCase();
+        if (!grupos.has(tipo)) grupos.set(tipo, []);
+        grupos.get(tipo).push(sc);
+      });
+      parts = [...grupos].map(([tipo, scenarios]) => ({
+        featureResult: { ...featureResult, scenarios },
+        nameBase: tipo,
+      }));
+    }
 
-    documents.push({ fileName, buffer });
+    for (const part of parts) {
+      const { children, plataforma } = buildFeatureSections(part.featureResult, formData, warnings);
+      const doc = wrapAsDocument(children);
+      // eslint-disable-next-line no-await-in-loop
+      const buffer = await Packer.toBuffer(doc);
+
+      const namePart = sanitizeFileNamePart(part.nameBase, 80) || 'Feature';
+      const platformPart = sanitizeFileNamePart(plataforma, 30) || 'SinPlataforma';
+      const fileName = `${namePart}-${platformPart}.docx`;
+
+      documents.push({ fileName, buffer });
+    }
   }
 
   return { documents, warnings };

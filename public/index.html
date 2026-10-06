@@ -15,10 +15,31 @@
 
     <form id="evidence-form">
       <fieldset>
+        <legend>Tipo de reporte</legend>
+        <div class="tipo-options">
+          <label class="tipo-option">
+            <input type="radio" name="tipoReporte" value="certificacion" checked />
+            <span><strong>Certificación</strong><small>Archivos .feature</small></span>
+          </label>
+          <label class="tipo-option">
+            <input type="radio" name="tipoReporte" value="regresion" />
+            <span><strong>Regresión</strong><small>Archivo .csv</small></span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset id="fieldset-features">
         <legend>Archivos .feature</legend>
         <label for="features">Selecciona uno o más archivos <code>.feature</code></label>
         <input type="file" id="features" name="features" accept=".feature" multiple required />
         <ul id="file-list" class="file-list"></ul>
+      </fieldset>
+
+      <fieldset id="fieldset-csv" hidden>
+        <legend>Archivo CSV de Regresión</legend>
+        <label for="csv">Selecciona el archivo <code>.csv</code> con los escenarios</label>
+        <input type="file" id="csv" name="csv" accept=".csv" />
+        <ul id="csv-list" class="file-list"></ul>
       </fieldset>
 
       <fieldset>

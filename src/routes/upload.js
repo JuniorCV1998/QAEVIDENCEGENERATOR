@@ -4,20 +4,30 @@ const path = require('path');
 const JSZip = require('jszip');
 
 const { parseFeatureContent, GherkinParseError } = require('../parser/gherkinParser');
+const { parseRegressionCsv, RegressionCsvError } = require('../parser/regressionCsvParser');
 const { generateEvidenceDocuments } = require('../generator/wordGenerator');
 
 const router = express.Router();
+
+const TIPOS_REPORTE = ['certificacion', 'regresion'];
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 20 },
   fileFilter: (req, file, cb) => {
-    if (path.extname(file.originalname).toLowerCase() !== '.feature') {
-      return cb(new Error(`"${file.originalname}" no es un archivo .feature`));
+    const ext = path.extname(file.originalname).toLowerCase();
+    const esperado = file.fieldname === 'csv' ? '.csv' : '.feature';
+    if (ext !== esperado) {
+      return cb(new Error(`"${file.originalname}" no es un archivo ${esperado}`));
     }
     cb(null, true);
   },
 });
+
+const uploadFields = upload.fields([
+  { name: 'features', maxCount: 20 },
+  { name: 'csv', maxCount: 1 },
+]);
 
 function normalizeMulti(value) {
   if (Array.isArray(value)) return value.filter(Boolean).join(', ');
@@ -29,15 +39,19 @@ function sanitizeFileNamePart(text) {
 }
 
 router.post('/generate', (req, res) => {
-  upload.array('features')(req, res, async (uploadErr) => {
+  uploadFields(req, res, async (uploadErr) => {
     if (uploadErr) {
       return res.status(400).json({ error: uploadErr.message });
     }
 
     try {
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: 'Debes subir al menos un archivo .feature.' });
+      const tipoReporte = (req.body.tipoReporte || 'certificacion').trim();
+      if (!TIPOS_REPORTE.includes(tipoReporte)) {
+        return res.status(400).json({ error: 'Tipo de reporte no válido.' });
       }
+
+      const featureFiles = (req.files && req.files.features) || [];
+      const csvFiles = (req.files && req.files.csv) || [];
 
       const formData = {
         jiraId: (req.body.jiraId || '').trim(),
@@ -51,14 +65,34 @@ router.post('/generate', (req, res) => {
         tipo: (req.body.tipo || '').trim(),
       };
 
-      const features = await Promise.all(
-        req.files.map((file) => parseFeatureContent(file.buffer.toString('utf8'), file.originalname))
-      );
+      let features;
+      const extraWarnings = [];
 
-      const { documents, warnings } = await generateEvidenceDocuments({ features, formData });
+      if (tipoReporte === 'regresion') {
+        if (csvFiles.length === 0) {
+          return res.status(400).json({ error: 'Debes subir el archivo .csv de Regresión.' });
+        }
+        const csv = parseRegressionCsv(csvFiles[0].buffer.toString('utf8'), csvFiles[0].originalname);
+        extraWarnings.push(...csv.warnings);
+        features = [csv];
+      } else {
+        if (featureFiles.length === 0) {
+          return res.status(400).json({ error: 'Debes subir al menos un archivo .feature.' });
+        }
+        features = await Promise.all(
+          featureFiles.map((file) => parseFeatureContent(file.buffer.toString('utf8'), file.originalname))
+        );
+      }
 
-      if (warnings.length > 0) {
-        res.setHeader('X-Generator-Warnings', encodeURIComponent(JSON.stringify(warnings)));
+      const { documents, warnings } = await generateEvidenceDocuments({
+        features,
+        formData,
+        modo: tipoReporte,
+      });
+      const allWarnings = [...extraWarnings, ...warnings];
+
+      if (allWarnings.length > 0) {
+        res.setHeader('X-Generator-Warnings', encodeURIComponent(JSON.stringify(allWarnings)));
       }
 
       if (documents.length === 1) {
@@ -71,7 +105,7 @@ router.post('/generate', (req, res) => {
         return res.send(buffer);
       }
 
-      // Varios features -> un .docx por archivo, comprimidos en un .zip
+      // Varios documentos (varios features, o varios escenarios de Regresión) -> .zip
       const zip = new JSZip();
       documents.forEach(({ fileName, buffer }) => {
         zip.file(fileName, buffer);
@@ -83,7 +117,7 @@ router.post('/generate', (req, res) => {
       res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
       res.send(zipBuffer);
     } catch (err) {
-      if (err instanceof GherkinParseError) {
+      if (err instanceof GherkinParseError || err instanceof RegressionCsvError) {
         return res.status(400).json({ error: err.message, code: err.code });
       }
       console.error('[upload] Error generando el documento:', err);

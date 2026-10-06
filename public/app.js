@@ -1,17 +1,43 @@
 const form = document.getElementById('evidence-form');
 const fileInput = document.getElementById('features');
 const fileList = document.getElementById('file-list');
+const csvInput = document.getElementById('csv');
+const csvList = document.getElementById('csv-list');
+const fieldsetFeatures = document.getElementById('fieldset-features');
+const fieldsetCsv = document.getElementById('fieldset-csv');
 const statusEl = document.getElementById('status');
 const submitBtn = document.getElementById('submit-btn');
 
-fileInput.addEventListener('change', () => {
-  fileList.innerHTML = '';
-  Array.from(fileInput.files).forEach((file) => {
+function currentTipoReporte() {
+  return form.querySelector('input[name="tipoReporte"]:checked').value;
+}
+
+function showFileNames(input, list) {
+  list.innerHTML = '';
+  Array.from(input.files).forEach((file) => {
     const li = document.createElement('li');
     li.textContent = file.name;
-    fileList.appendChild(li);
+    list.appendChild(li);
   });
+}
+
+fileInput.addEventListener('change', () => showFileNames(fileInput, fileList));
+csvInput.addEventListener('change', () => showFileNames(csvInput, csvList));
+
+// Muestra solo el campo de archivo del tipo elegido y lo marca como obligatorio.
+function applyTipoReporte() {
+  const regresion = currentTipoReporte() === 'regresion';
+  fieldsetFeatures.hidden = regresion;
+  fieldsetCsv.hidden = !regresion;
+  fileInput.required = !regresion;
+  csvInput.required = regresion;
+  setStatus('', '');
+}
+
+form.querySelectorAll('input[name="tipoReporte"]').forEach((radio) => {
+  radio.addEventListener('change', applyTipoReporte);
 });
+applyTipoReporte();
 
 function setStatus(message, type) {
   statusEl.textContent = message;
@@ -27,7 +53,12 @@ function extractFileName(contentDisposition, fallback) {
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
-  if (fileInput.files.length === 0) {
+  if (currentTipoReporte() === 'regresion') {
+    if (csvInput.files.length === 0) {
+      setStatus('Selecciona el archivo .csv de Regresión.', 'error');
+      return;
+    }
+  } else if (fileInput.files.length === 0) {
     setStatus('Selecciona al menos un archivo .feature.', 'error');
     return;
   }
